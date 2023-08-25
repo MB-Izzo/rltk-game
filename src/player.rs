@@ -1,7 +1,7 @@
-use rltk::{VirtualKeyCode, Rltk};
+use super::{get_index_at, Player, Position, State, TileType};
+use rltk::Rltk;
 use specs::prelude::*;
-use super::{Position, Player, TileType, get_index_at, State};
-use std::cmp::{min, max};
+use std::cmp::{max, min};
 
 pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
@@ -22,10 +22,21 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
 pub fn player_input(gs: &mut State, ctx: &mut Rltk) {
     match ctx.key {
         Some(key) => match key {
-            rltk::VirtualKeyCode::Up => try_move_player(0, -1, &mut gs.ecs),
-            rltk::VirtualKeyCode::Down => try_move_player(0, 1, &mut gs.ecs),
-            rltk::VirtualKeyCode::Left => try_move_player(-1, 0, &mut gs.ecs),
-            rltk::VirtualKeyCode::Right => try_move_player(1, 0, &mut gs.ecs),
+            rltk::VirtualKeyCode::Up | rltk::VirtualKeyCode::K => {
+                try_move_player(0, -1, &mut gs.ecs)
+            }
+
+            rltk::VirtualKeyCode::Down | rltk::VirtualKeyCode::J => {
+                try_move_player(0, 1, &mut gs.ecs)
+            }
+
+            rltk::VirtualKeyCode::Left | rltk::VirtualKeyCode::H => {
+                try_move_player(-1, 0, &mut gs.ecs)
+            }
+
+            rltk::VirtualKeyCode::Right | rltk::VirtualKeyCode::L => {
+                try_move_player(1, 0, &mut gs.ecs)
+            }
             _ => {}
         },
         None => {}
