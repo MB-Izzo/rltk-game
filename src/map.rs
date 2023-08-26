@@ -18,6 +18,7 @@ pub struct Map {
     pub width: i32,
     pub height: i32,
     pub revealed_tiles: Vec<bool>,
+    pub visible_tiles: Vec<bool>,
 }
 
 impl Algorithm2D for Map {
@@ -34,7 +35,7 @@ impl BaseMap for Map {
 
 impl Map {
     pub fn get_index_at(&self, x: i32, y: i32) -> usize {
-        (y as usize * 80) + x as usize
+        (y as usize * self.width as usize) + x as usize
     }
 
     pub fn new_map_rooms_and_corridors() -> Map {
@@ -42,11 +43,12 @@ impl Map {
             tiles: vec![TileType::Wall; 80 * 50],
             rooms: Vec::new(),
             width: 80,
-            height: 80,
+            height: 50,
             revealed_tiles: vec![false; 80 * 50],
+            visible_tiles: vec![false; 80 * 50],
         };
 
-        const MAX_ROOMS: i32 = 30;
+        const MAX_ROOMS: i32 = 20;
         const MIN_SIZE: i32 = 6;
         const MAX_SIZE: i32 = 10;
 
@@ -87,8 +89,8 @@ impl Map {
     }
 
     fn apply_room_to_map(&mut self, room: &Rect) {
-        for y in room.y1 + 1..=room.y2 {
-            for x in room.x1 + 1..=room.x2 {
+        for y in room.y1 + 1..= room.y2 {
+            for x in room.x1 + 1..= room.x2 {
                 let idx = self.get_index_at(x, y);
                 self.tiles[idx] = TileType::Floor;
             }
@@ -99,7 +101,7 @@ impl Map {
         // ensure we go from lower x to higher x
         for x in min(x1, x2)..=max(x1, x2) {
             let idx = self.get_index_at(x, y);
-            if idx > 0 && idx < 80 * 50 {
+            if idx > 0 && idx < self.width as usize * self.height as usize {
                 self.tiles[idx as usize] = TileType::Floor;
             }
         }
@@ -108,7 +110,7 @@ impl Map {
     fn apply_vertical_tunnel(&mut self, y1: i32, y2: i32, x: i32) {
         for y in min(y1, y2)..=max(y1, y2) {
             let idx = self.get_index_at(x, y);
-            if idx > 0 && idx < 80 * 50 {
+            if idx > 0 && idx < self.width as usize * self.height as usize {
                 self.tiles[idx as usize] = TileType::Floor;
             }
         }
@@ -124,26 +126,22 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
     for (idx, tile) in map.tiles.iter().enumerate() {
         // Render a tile depending upon the tile type
         if map.revealed_tiles[idx] {
+            let glyph;
+            let mut fg;
             match tile {
                 TileType::Floor => {
-                    ctx.set(
-                        x,
-                        y,
-                        RGB::from_f32(0.5, 0.5, 0.5),
-                        RGB::from_f32(0., 0., 0.),
-                        rltk::to_cp437('.'),
-                    );
+                    glyph = rltk::to_cp437('.');
+                    fg = RGB::from_f32(0.5, 0.5, 1.0);
                 }
                 TileType::Wall => {
-                    ctx.set(
-                        x,
-                        y,
-                        RGB::from_f32(0.0, 1.0, 0.0),
-                        RGB::from_f32(0., 0., 0.),
-                        rltk::to_cp437('#'),
-                    );
+                    glyph = rltk::to_cp437('#');
+                    fg = RGB::from_f32(0.0, 1.0, 0.0);
                 }
             }
+            if !map.visible_tiles[idx] {
+                fg = fg.to_greyscale()
+            }
+            ctx.set(x, y, fg, RGB::from_f32(0., 0., 0.), glyph);
         }
         // move coords
         x += 1;
