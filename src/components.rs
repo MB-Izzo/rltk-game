@@ -58,9 +58,11 @@ pub struct SufferDamage {
 
 impl SufferDamage {
     pub fn new_damage(store: &mut WriteStorage<SufferDamage>, victim: Entity, amount: i32) {
+        // if victim already has dmg component, add damage to the component
         if let Some(suffering) = store.get_mut(victim) {
             suffering.amount.push(amount);
         } else {
+            // add suffer damage component to the enemy with the first dmg to take
             let dmg = SufferDamage { amount: vec![amount] };
             store.insert(victim, dmg).expect("Unable to insert damage");
         }

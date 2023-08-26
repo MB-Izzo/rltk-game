@@ -24,6 +24,9 @@ use map_indexing_system::MapIndexingSystem;
 mod melee_combat_system;
 use melee_combat_system::MeleeCombatSystem;
 
+mod damage_system;
+use damage_system::*;
+
 pub struct State {
     pub ecs: World,
     pub run_state: RunState,
@@ -40,6 +43,12 @@ impl State {
         let mut map_index = MapIndexingSystem {};
         map_index.run_now(&self.ecs);
 
+        let mut melee_combat = MeleeCombatSystem {};
+        melee_combat.run_now(&self.ecs);
+
+        let mut damage_system = DamageSystem{};
+        damage_system.run_now(&self.ecs);
+
         self.ecs.maintain();
     }
 }
@@ -50,6 +59,7 @@ impl GameState for State {
 
         if self.run_state == RunState::Running {
             self.run_systems();
+            damage_system::delete_the_dead(&mut self.ecs);
             self.run_state = RunState::Paused;
         } else {
             self.run_state = player_input(self, ctx);
