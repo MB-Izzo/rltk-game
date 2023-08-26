@@ -29,7 +29,6 @@ use damage_system::*;
 
 pub struct State {
     pub ecs: World,
-    pub run_state: RunState,
 }
 
 impl State {
@@ -46,7 +45,7 @@ impl State {
         let mut melee_combat = MeleeCombatSystem {};
         melee_combat.run_now(&self.ecs);
 
-        let mut damage_system = DamageSystem{};
+        let mut damage_system = DamageSystem {};
         damage_system.run_now(&self.ecs);
 
         self.ecs.maintain();
@@ -56,15 +55,35 @@ impl State {
 impl GameState for State {
     fn tick(&mut self, ctx: &mut Rltk) {
         ctx.cls();
-
-        if self.run_state == RunState::Running {
-            self.run_systems();
-            damage_system::delete_the_dead(&mut self.ecs);
-            self.run_state = RunState::Paused;
-        } else {
-            self.run_state = player_input(self, ctx);
+        let mut new_run_state;
+        {
+            let run_state = self.ecs.fetch::<RunState>();
+            new_run_state = *run_state;
         }
 
+        match new_run_state {
+            RunState::PrePun => {
+                self.run_systems();
+                new_run_state = RunState::AwaitingInput;
+            }
+            RunState::AwaitingInput => {
+                new_run_state = player_input(self, ctx);
+            }
+            RunState::PlayerTurn => {
+                self.run_systems();
+                new_run_state = RunState::MonsterTurn;
+            }
+            RunState::MonsterTurn => {
+                self.run_systems();
+                new_run_state = RunState::AwaitingInput;
+            }
+        }
+
+        {
+            let mut run_writer = self.ecs.write_resource::<RunState>();
+            *run_writer = new_run_state;
+        }
+        damage_system::delete_the_dead(&mut self.ecs);
         draw_map(&self.ecs, ctx);
 
         let positions = self.ecs.read_storage::<Position>();
@@ -88,7 +107,6 @@ fn main() -> rltk::BError {
 
     let mut gs = State {
         ecs: World::new(),
-        run_state: RunState::Running,
     };
 
     // Register components to ECS
@@ -144,7 +162,7 @@ fn main() -> rltk::BError {
                 max_hp: 16,
                 hp: 16,
                 defense: 2,
-                power: 5,
+                power: 3,
             })
             .build();
     }
@@ -153,7 +171,8 @@ fn main() -> rltk::BError {
     gs.ecs.insert(map);
     gs.ecs.insert(Point::new(player_x, player_y));
 
-    gs.ecs
+    let player_entity = gs
+        .ecs
         .create_entity()
         .with(Position {
             x: player_x,
@@ -180,11 +199,16 @@ fn main() -> rltk::BError {
             power: 5,
         })
         .build();
+
+    gs.ecs.insert(player_entity);
+    gs.ecs.insert(RunState::PrePun);
     rltk::main_loop(context, gs)
 }
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
-    Paused,
-    Running,
+    AwaitingInput,
+    PrePun,
+    PlayerTurn,
+    MonsterTurn,
 }

@@ -1,5 +1,5 @@
 use super::{CombatStats, Map, Player, Position, RunState, State, Viewshed, WantsToMelee};
-use rltk::{console, Point, Rltk};
+use rltk::{Point, Rltk};
 use specs::prelude::*;
 use std::cmp::{max, min};
 
@@ -50,7 +50,7 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
 pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
     match ctx.key {
         None => {
-            return RunState::Paused;
+            return RunState::AwaitingInput;
         }
         Some(key) => match key {
             rltk::VirtualKeyCode::Up | rltk::VirtualKeyCode::K => {
@@ -75,9 +75,9 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             rltk::VirtualKeyCode::N => try_move_player(1, 1, &mut gs.ecs),
             rltk::VirtualKeyCode::B => try_move_player(-1, 1, &mut gs.ecs),
             _ => {
-                return RunState::Paused;
+                return RunState::AwaitingInput;
             }
         },
     }
-    RunState::Running
+    RunState::PlayerTurn
 }
