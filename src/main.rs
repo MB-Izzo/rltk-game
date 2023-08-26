@@ -28,7 +28,8 @@ mod damage_system;
 use damage_system::*;
 
 mod gui;
-use gui::*;
+
+mod gamelog;
 
 pub struct State {
     pub ecs: World,
@@ -110,9 +111,7 @@ fn main() -> rltk::BError {
         .with_title("Roguelike Tutorial")
         .build()?;
 
-    let mut gs = State {
-        ecs: World::new(),
-    };
+    let mut gs = State { ecs: World::new() };
 
     // Register components to ECS
     gs.ecs.register::<Position>();
@@ -207,6 +206,9 @@ fn main() -> rltk::BError {
 
     gs.ecs.insert(player_entity);
     gs.ecs.insert(RunState::PrePun);
+    gs.ecs.insert(gamelog::GameLog {
+        entries: vec!["Welcome".to_string()],
+    });
     rltk::main_loop(context, gs)
 }
 
