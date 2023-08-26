@@ -1,10 +1,7 @@
 use std::cmp::{max, min};
-
-use crate::components::{Player, Viewshed};
-
 use super::rect::Rect;
 use rltk::{Algorithm2D, BaseMap, Point, RandomNumberGenerator, Rltk, RGB};
-use specs::{Join, World, WorldExt};
+use specs::{World, Entity};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum TileType {
@@ -19,6 +16,8 @@ pub struct Map {
     pub height: i32,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
+    pub blocked: Vec<bool>,
+    pub tile_content: Vec<Vec<Entity>>,
 }
 
 impl Algorithm2D for Map {
@@ -31,11 +30,75 @@ impl BaseMap for Map {
     fn is_opaque(&self, index: usize) -> bool {
         self.tiles[index as usize] == TileType::Wall
     }
+
+    // where can I go from this tile
+    fn get_available_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
+        let mut exits = rltk::SmallVec::new();
+        let (x, y) = self.get_xy_from_idx(idx);
+        let w = self.width as usize;
+
+        // every directions (cardinal)
+        if self.is_exit_valid(x - 1, y) {
+            exits.push((idx - 1, 1.0))
+        };
+        if self.is_exit_valid(x + 1, y) {
+            exits.push((idx + 1, 1.0))
+        };
+        if self.is_exit_valid(x, y - 1) {
+            // when you "idx-w" you go one col down
+            exits.push((idx - w, 1.0))
+        };
+        if self.is_exit_valid(x, y + 1) {
+            exits.push((idx + w, 1.0))
+        };
+
+        // diagonals
+        if self.is_exit_valid(x - 1, y - 1) {
+            exits.push(((idx - w) - 1, 1.45))
+        };
+        if self.is_exit_valid(x + 1, y - 1) {
+            exits.push(((idx - w) + 1, 1.45))
+        };
+        if self.is_exit_valid(x - 1, y + 1) {
+            // when you "idx-w" you go one col down
+            exits.push(((idx + w) - 1, 1.45))
+        };
+        if self.is_exit_valid(x + 1, y + 1) {
+            exits.push(((idx + w) + 1, 1.45))
+        };
+
+        exits
+    }
+
+    fn get_pathing_distance(&self, idx1: usize, idx2: usize) -> f32 {
+        let w = self.width as usize;
+        let p1 = Point::new(idx1 % w, idx1 / w);
+        let p2 = Point::new(idx2 % w, idx2 / w);
+        rltk::DistanceAlg::Pythagoras.distance2d(p1, p2)
+    }
 }
 
 impl Map {
     pub fn get_index_at(&self, x: i32, y: i32) -> usize {
         (y as usize * self.width as usize) + x as usize
+    }
+
+    pub fn get_xy_from_idx(&self, idx: usize) -> (i32, i32) {
+        let x = idx as i32 % self.width;
+        let y = idx as i32 / self.width;
+        (x, y)
+    }
+
+    pub fn populate_blocked(&mut self) {
+        for (i, tile) in self.tiles.iter_mut().enumerate() {
+            self.blocked[i] = *tile == TileType::Wall;
+        }
+    }
+
+    pub fn clear_content_index(&mut self) {
+        for content in self.tile_content.iter_mut() {
+            content.clear();
+        }
     }
 
     pub fn new_map_rooms_and_corridors() -> Map {
@@ -46,6 +109,8 @@ impl Map {
             height: 50,
             revealed_tiles: vec![false; 80 * 50],
             visible_tiles: vec![false; 80 * 50],
+            blocked: vec![false; 80 * 50],
+            tile_content: vec![Vec::new(); 80 * 50],
         };
 
         const MAX_ROOMS: i32 = 20;
@@ -89,8 +154,8 @@ impl Map {
     }
 
     fn apply_room_to_map(&mut self, room: &Rect) {
-        for y in room.y1 + 1..= room.y2 {
-            for x in room.x1 + 1..= room.x2 {
+        for y in room.y1 + 1..=room.y2 {
+            for x in room.x1 + 1..=room.x2 {
                 let idx = self.get_index_at(x, y);
                 self.tiles[idx] = TileType::Floor;
             }
@@ -114,6 +179,14 @@ impl Map {
                 self.tiles[idx as usize] = TileType::Floor;
             }
         }
+    }
+
+    fn is_exit_valid(&self, x: i32, y: i32) -> bool {
+        if x < 1 || x > self.width - 1 || y < 1 || y > self.height - 1 {
+            return false;
+        }
+        let idx = self.get_index_at(x, y);
+        !self.blocked[idx]
     }
 }
 

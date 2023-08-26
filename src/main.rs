@@ -18,6 +18,12 @@ use visibility_system::VisibilitySystem;
 mod monster_ai_system;
 use monster_ai_system::MonsterAI;
 
+mod map_indexing_system;
+use map_indexing_system::MapIndexingSystem;
+
+mod melee_combat_system;
+use melee_combat_system::MeleeCombatSystem;
+
 pub struct State {
     pub ecs: World,
     pub run_state: RunState,
@@ -30,6 +36,9 @@ impl State {
 
         let mut monster_ai = MonsterAI {};
         monster_ai.run_now(&self.ecs);
+
+        let mut map_index = MapIndexingSystem {};
+        map_index.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -72,12 +81,18 @@ fn main() -> rltk::BError {
         run_state: RunState::Running,
     };
 
+    // Register components to ECS
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
     gs.ecs.register::<Monster>();
     gs.ecs.register::<Name>();
+    gs.ecs.register::<BlocksTile>();
+    gs.ecs.register::<CombatStats>();
+    gs.ecs.register::<WantsToMelee>();
+    gs.ecs.register::<SufferDamage>();
+
     let map = Map::new_map_rooms_and_corridors();
 
     let mut rng = rltk::RandomNumberGenerator::new();
@@ -114,6 +129,13 @@ fn main() -> rltk::BError {
             .with(Name {
                 name: format!("{} #{}", &name, i),
             })
+            .with(BlocksTile {})
+            .with(CombatStats {
+                max_hp: 16,
+                hp: 16,
+                defense: 2,
+                power: 5,
+            })
             .build();
     }
 
@@ -140,6 +162,12 @@ fn main() -> rltk::BError {
         })
         .with(Name {
             name: "Player".to_string(),
+        })
+        .with(CombatStats {
+            max_hp: 30,
+            hp: 30,
+            defense: 2,
+            power: 5,
         })
         .build();
     rltk::main_loop(context, gs)
