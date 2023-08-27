@@ -9,7 +9,15 @@ Just...
 cargo run
 ```
 
-## Todo
-https://bfnightly.bracketproductions.com/chapter_7.html
-ctrl+f:
-We use an iterator to sum the damage, ensuring that it is all applied
+## Current features
+
+* Simple map generation
+* Movement
+* Monsters with basic AI
+* Melee fighting
+* Items pickup
+* Basic GUI with entrylog and tooltips
+
+## Next Step
+
+Show inventory
