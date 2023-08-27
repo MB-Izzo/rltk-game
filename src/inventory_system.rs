@@ -26,7 +26,7 @@ impl<'a> System<'a> for ItemCollectionSystem {
             backpack.insert(pickup.item, InBackpack { owner: pickup.collected_by }).expect("Unable to insert backpack entry");
 
             if pickup.collected_by == *player_entity {
-                gamelog.entries.push(format!("You pick up {}.", names.get(pickup.item).unwrap().name));
+                gamelog.entries.push(format!("You picked up {}.", names.get(pickup.item).unwrap().name));
             }
         }
 
