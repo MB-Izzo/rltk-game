@@ -91,6 +91,9 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             rltk::VirtualKeyCode::B => try_move_player(-1, 1, &mut gs.ecs),
 
             rltk::VirtualKeyCode::G => get_item(&mut gs.ecs),
+
+            rltk::VirtualKeyCode::I => return RunState::ShowInventory,
+
             _ => {
                 return RunState::AwaitingInput;
             }

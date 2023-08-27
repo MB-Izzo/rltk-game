@@ -1,4 +1,4 @@
-use inventory_system::ItemCollectionSystem;
+use inventory_system::{ItemCollectionSystem, PotionUseSystem};
 use player::player_input;
 use rltk::{GameState, Point, Rltk, RGB};
 use specs::prelude::*;
@@ -59,6 +59,9 @@ impl State {
         let mut pickup = ItemCollectionSystem {};
         pickup.run_now(&self.ecs);
 
+        let mut potions = PotionUseSystem {};
+        potions.run_now(&self.ecs);
+
         self.ecs.maintain();
     }
 }
@@ -66,6 +69,24 @@ impl State {
 impl GameState for State {
     fn tick(&mut self, ctx: &mut Rltk) {
         ctx.cls();
+
+        draw_map(&self.ecs, ctx);
+
+        {
+            let positions = self.ecs.read_storage::<Position>();
+            let renderables = self.ecs.read_storage::<Renderable>();
+            let map = self.ecs.fetch::<Map>();
+
+            for (pos, render) in (&positions, &renderables).join() {
+                let idx = map.get_index_at(pos.x, pos.y);
+                if map.visible_tiles[idx] {
+                    ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+                }
+            }
+
+            gui::draw_ui(&self.ecs, ctx);
+        }
+
         let mut new_run_state;
         {
             let run_state = self.ecs.fetch::<RunState>();
@@ -75,6 +96,7 @@ impl GameState for State {
         match new_run_state {
             RunState::PrePun => {
                 self.run_systems();
+                self.ecs.maintain();
                 new_run_state = RunState::AwaitingInput;
             }
             RunState::AwaitingInput => {
@@ -82,11 +104,34 @@ impl GameState for State {
             }
             RunState::PlayerTurn => {
                 self.run_systems();
+                // for potions to actually be deleted
+                self.ecs.maintain();
                 new_run_state = RunState::MonsterTurn;
             }
             RunState::MonsterTurn => {
                 self.run_systems();
+                self.ecs.maintain();
                 new_run_state = RunState::AwaitingInput;
+            }
+            RunState::ShowInventory => {
+                let result = gui::show_inventory(self, ctx);
+                match result.0 {
+                    gui::ItemMenuResult::Cancel => new_run_state = RunState::AwaitingInput,
+                    gui::ItemMenuResult::NoResponse => {}
+                    gui::ItemMenuResult::Selected => {
+                        let item_entity = result.1.unwrap();
+                        let mut intent = self.ecs.write_storage::<WantsToDrinkPotion>();
+                        intent
+                            .insert(
+                                *self.ecs.fetch::<Entity>(),
+                                WantsToDrinkPotion {
+                                    potion: item_entity,
+                                },
+                            )
+                            .expect("Unabled to insert intent do drink potion");
+                        new_run_state = RunState::PlayerTurn;
+                    }
+                }
             }
         }
 
@@ -95,20 +140,6 @@ impl GameState for State {
             *run_writer = new_run_state;
         }
         damage_system::delete_the_dead(&mut self.ecs);
-        draw_map(&self.ecs, ctx);
-
-        let positions = self.ecs.read_storage::<Position>();
-        let renderables = self.ecs.read_storage::<Renderable>();
-        let map = self.ecs.fetch::<Map>();
-
-        for (pos, render) in (&positions, &renderables).join() {
-            let idx = map.get_index_at(pos.x, pos.y);
-            if map.visible_tiles[idx] {
-                ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
-            }
-        }
-
-        gui::draw_ui(&self.ecs, ctx);
     }
 }
 
@@ -137,6 +168,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Potion>();
     gs.ecs.register::<InBackpack>();
     gs.ecs.register::<WantsToPickupItem>();
+    gs.ecs.register::<WantsToDrinkPotion>();
 
     let map = Map::new_map_rooms_and_corridors();
 
@@ -165,4 +197,5 @@ pub enum RunState {
     PrePun,
     PlayerTurn,
     MonsterTurn,
+    ShowInventory,
 }

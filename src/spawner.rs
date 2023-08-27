@@ -32,8 +32,8 @@ pub fn player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
             name: "Player".to_string(),
         })
         .with(CombatStats {
-            max_hp: 30,
-            hp: 30,
+            max_hp: 180,
+            hp: 180,
             defense: 2,
             power: 5,
         })

@@ -63,7 +63,9 @@ impl SufferDamage {
             suffering.amount.push(amount);
         } else {
             // add suffer damage component to the enemy with the first dmg to take
-            let dmg = SufferDamage { amount: vec![amount] };
+            let dmg = SufferDamage {
+                amount: vec![amount],
+            };
             store.insert(victim, dmg).expect("Unable to insert damage");
         }
     }
@@ -74,16 +76,21 @@ pub struct Item {}
 
 #[derive(Component, Debug)]
 pub struct Potion {
-    pub heal_amount: i32
+    pub heal_amount: i32,
 }
 
 #[derive(Component, Debug, Clone)]
 pub struct InBackpack {
-    pub owner: Entity
+    pub owner: Entity,
 }
 
 #[derive(Component, Debug, Clone)]
 pub struct WantsToPickupItem {
     pub collected_by: Entity,
     pub item: Entity,
+}
+
+#[derive(Component, Debug)]
+pub struct WantsToDrinkPotion {
+    pub potion: Entity,
 }
