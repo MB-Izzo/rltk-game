@@ -1,4 +1,8 @@
-use crate::{rect::Rect, map::{Map, MAPWIDTH}};
+use crate::{
+    components::{Potion, Item},
+    map::{Map, MAPWIDTH},
+    rect::Rect,
+};
 
 use super::{BlocksTile, CombatStats, Monster, Name, Player, Position, Renderable, Viewshed};
 use rltk::{RandomNumberGenerator, RGB};
@@ -44,17 +48,19 @@ pub fn random_monster(ecs: &mut World, x: i32, y: i32) {
     }
 
     match roll {
-        1 => { orc(ecs, x, y) }
-        _ => { goblin(ecs, x, y) }
+        1 => orc(ecs, x, y),
+        _ => goblin(ecs, x, y),
     }
 }
 
 pub fn spawn_room_content(ecs: &mut World, room: &Rect) {
     let mut monster_spawn_points: Vec<usize> = Vec::new();
+    let mut items_spawn_points: Vec<usize> = Vec::new();
     // scope for borrow checker
     {
         let mut rng = ecs.write_resource::<RandomNumberGenerator>();
         let num_monsters = rng.roll_dice(1, MAX_MONSTERS + 2) - 3;
+        let num_items = rng.roll_dice(1, MAX_ITEMS + 2) - 3;
 
         for _i in 0..num_monsters {
             let mut added = false;
@@ -68,6 +74,19 @@ pub fn spawn_room_content(ecs: &mut World, room: &Rect) {
                 }
             }
         }
+
+        for _i in 0..num_items {
+            let mut added = false;
+            while !added {
+                let x = (room.x1 + rng.roll_dice(1, i32::abs(room.x2 - room.x1))) as usize;
+                let y = (room.y1 + rng.roll_dice(1, i32::abs(room.y2 - room.y1))) as usize;
+                let idx = (y * MAPWIDTH) + x; // should be a helper function for Map...
+                if !items_spawn_points.contains(&idx) {
+                    items_spawn_points.push(idx);
+                    added = true;
+                }
+            }
+        }
     }
 
     for idx in monster_spawn_points.iter() {
@@ -75,6 +94,28 @@ pub fn spawn_room_content(ecs: &mut World, room: &Rect) {
         let y = *idx / MAPWIDTH;
         random_monster(ecs, x as i32, y as i32);
     }
+
+    for idx in items_spawn_points.iter() {
+        let x = *idx % MAPWIDTH;
+        let y = *idx / MAPWIDTH;
+        health_potion(ecs, x as i32, y as i32);
+    }
+}
+
+fn health_potion(ecs: &mut World, x: i32, y: i32) {
+    ecs.create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437('¡'),
+            fg: RGB::named(rltk::MAGENTA),
+            bg: RGB::named(rltk::BLACK),
+        })
+        .with(Name {
+            name: "Health Potion".to_string(),
+        })
+        .with(Item {})
+        .with(Potion { heal_amount: 8 })
+        .build();
 }
 
 fn orc(ecs: &mut World, x: i32, y: i32) {

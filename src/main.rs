@@ -1,3 +1,4 @@
+use inventory_system::ItemCollectionSystem;
 use player::player_input;
 use rltk::{GameState, Point, Rltk, RGB};
 use specs::prelude::*;
@@ -32,6 +33,8 @@ mod gui;
 
 mod spawner;
 
+mod inventory_system;
+
 pub struct State {
     pub ecs: World,
 }
@@ -52,6 +55,9 @@ impl State {
 
         let mut damage_system = DamageSystem {};
         damage_system.run_now(&self.ecs);
+
+        let mut pickup = ItemCollectionSystem {};
+        pickup.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -127,6 +133,10 @@ fn main() -> rltk::BError {
     gs.ecs.register::<CombatStats>();
     gs.ecs.register::<WantsToMelee>();
     gs.ecs.register::<SufferDamage>();
+    gs.ecs.register::<Item>();
+    gs.ecs.register::<Potion>();
+    gs.ecs.register::<InBackpack>();
+    gs.ecs.register::<WantsToPickupItem>();
 
     let map = Map::new_map_rooms_and_corridors();
 
