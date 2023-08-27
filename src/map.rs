@@ -3,9 +3,9 @@ use super::rect::Rect;
 use rltk::{Algorithm2D, BaseMap, Point, RandomNumberGenerator, Rltk, RGB};
 use specs::{World, Entity};
 
-const MAPWIDTH: usize = 80;
-const MAPHEIGHT: usize = 43;
-const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
+pub const MAPWIDTH: usize = 80;
+pub const MAPHEIGHT: usize = 43;
+pub const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum TileType {
@@ -117,7 +117,7 @@ impl Map {
             tile_content: vec![Vec::new(); MAPCOUNT],
         };
 
-        const MAX_ROOMS: i32 = 20;
+        const MAX_ROOMS: i32 = 30;
         const MIN_SIZE: i32 = 6;
         const MAX_SIZE: i32 = 10;
 
@@ -126,8 +126,8 @@ impl Map {
         for _ in 0..MAX_ROOMS {
             let w = rng.range(MIN_SIZE, MAX_SIZE);
             let h = rng.range(MIN_SIZE, MAX_SIZE);
-            let x = rng.roll_dice(1, MAPWIDTH as i32 - w - 1) - 1;
-            let y = rng.roll_dice(1, MAPHEIGHT as i32 - w - 1) - 1;
+            let x = rng.roll_dice(1, map.width - w - 1) - 1;
+            let y = rng.roll_dice(1, map.height - h - 1) - 1;
             let new_room = Rect::new(x, y, w, h);
             let mut ok = true;
             for other_room in map.rooms.iter() {
@@ -222,7 +222,7 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
         }
         // move coords
         x += 1;
-        if x > 79 {
+        if x > MAPWIDTH - 1 {
             x = 0;
             y += 1;
         }
