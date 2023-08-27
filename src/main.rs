@@ -1,4 +1,4 @@
-use inventory_system::{ItemCollectionSystem, PotionUseSystem};
+use inventory_system::{ItemCollectionSystem, ItemDropSystem, PotionUseSystem};
 use player::player_input;
 use rltk::{GameState, Point, Rltk, RGB};
 use specs::prelude::*;
@@ -61,6 +61,9 @@ impl State {
 
         let mut potions = PotionUseSystem {};
         potions.run_now(&self.ecs);
+
+        let mut drop_items = ItemDropSystem {};
+        drop_items.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -133,6 +136,24 @@ impl GameState for State {
                     }
                 }
             }
+            RunState::ShowDropItem => {
+                let result = gui::show_drop_item_menu(self, ctx);
+                match result.0 {
+                    gui::ItemMenuResult::Cancel => new_run_state = RunState::AwaitingInput,
+                    gui::ItemMenuResult::NoResponse => {}
+                    gui::ItemMenuResult::Selected => {
+                        let item_entity = result.1.unwrap();
+                        let mut intent = self.ecs.write_storage::<WantsToDropItem>();
+                        intent
+                            .insert(
+                                *self.ecs.fetch::<Entity>(),
+                                WantsToDropItem { item: item_entity },
+                            )
+                            .expect("Unabled to insert intent do drop item");
+                        new_run_state = RunState::PlayerTurn;
+                    }
+                }
+            }
         }
 
         {
@@ -169,6 +190,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<InBackpack>();
     gs.ecs.register::<WantsToPickupItem>();
     gs.ecs.register::<WantsToDrinkPotion>();
+    gs.ecs.register::<WantsToDropItem>();
 
     let map = Map::new_map_rooms_and_corridors();
 
@@ -198,4 +220,5 @@ pub enum RunState {
     PlayerTurn,
     MonsterTurn,
     ShowInventory,
+    ShowDropItem,
 }

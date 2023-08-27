@@ -15,8 +15,9 @@ cargo run
 * Movement
 * Monsters with basic AI
 * Melee fighting
-* Items pickup
 * Basic GUI with entrylog and tooltips
+* Inventory
+* Potions
 
 ## Next Step
 
