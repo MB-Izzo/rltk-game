@@ -2,6 +2,19 @@ use rltk::{Console, Point, Rltk, RGB};
 use specs::prelude::*;
 
 #[derive(PartialEq, Copy, Clone)]
+pub enum MainMenuSelection {
+    NewGame,
+    LoadGame,
+    Quit,
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum MainMenuResult {
+    NoSelection { selected: MainMenuSelection },
+    Selected { selected: MainMenuSelection },
+}
+
+#[derive(PartialEq, Copy, Clone)]
 pub enum ItemMenuResult {
     Cancel,
     NoResponse,
@@ -11,7 +24,7 @@ pub enum ItemMenuResult {
 use crate::{
     components::{CombatStats, InBackpack, Player, Position, Viewshed},
     gamelog::GameLog,
-    Aiming, Map, Name, State,
+    Aiming, Map, Name, RunState, State,
 };
 
 pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
@@ -447,4 +460,114 @@ pub fn ranged_target(
     */
 
     (ItemMenuResult::NoResponse, None)
+}
+
+pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
+    let run_state = gs.ecs.fetch::<RunState>();
+
+    ctx.print_color_centered(
+        15,
+        RGB::named(rltk::YELLOW),
+        RGB::named(rltk::BLACK),
+        "Roguelike",
+    );
+
+    if let RunState::MainMenu {
+        menu_selection: selection,
+    } = *run_state
+    {
+        if selection == MainMenuSelection::NewGame {
+            ctx.print_color_centered(
+                24,
+                RGB::named(rltk::MAGENTA),
+                RGB::named(rltk::BLACK),
+                "Begin new game",
+            );
+        } else {
+            ctx.print_color_centered(
+                24,
+                RGB::named(rltk::WHITE),
+                RGB::named(rltk::BLACK),
+                "Begin new game",
+            );
+        }
+
+        if selection == MainMenuSelection::LoadGame {
+            ctx.print_color_centered(
+                25,
+                RGB::named(rltk::MAGENTA),
+                RGB::named(rltk::BLACK),
+                "Load game",
+            );
+        } else {
+            ctx.print_color_centered(
+                25,
+                RGB::named(rltk::WHITE),
+                RGB::named(rltk::BLACK),
+                "Load game",
+            );
+        }
+
+        if selection == MainMenuSelection::Quit {
+            ctx.print_color_centered(
+                26,
+                RGB::named(rltk::MAGENTA),
+                RGB::named(rltk::BLACK),
+                "Quit",
+            );
+        } else {
+            ctx.print_color_centered(26, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Quit");
+        }
+
+        match ctx.key {
+            None => {
+                return MainMenuResult::NoSelection {
+                    selected: selection,
+                }
+            }
+            Some(key) => match key {
+                rltk::VirtualKeyCode::Escape => {
+                    return MainMenuResult::NoSelection {
+                        selected: MainMenuSelection::Quit,
+                    }
+                }
+                rltk::VirtualKeyCode::Up => {
+                    let new_selection;
+                    match selection {
+                        MainMenuSelection::NewGame => new_selection = MainMenuSelection::Quit,
+                        MainMenuSelection::LoadGame => new_selection = MainMenuSelection::NewGame,
+                        MainMenuSelection::Quit => new_selection = MainMenuSelection::LoadGame,
+                    }
+                    return MainMenuResult::NoSelection {
+                        selected: new_selection,
+                    };
+                }
+                rltk::VirtualKeyCode::Down => {
+                    let new_selection;
+                    match selection {
+                        MainMenuSelection::NewGame => new_selection = MainMenuSelection::LoadGame,
+                        MainMenuSelection::LoadGame => new_selection = MainMenuSelection::Quit,
+                        MainMenuSelection::Quit => new_selection = MainMenuSelection::NewGame,
+                    }
+                    return MainMenuResult::NoSelection {
+                        selected: new_selection,
+                    };
+                }
+                rltk::VirtualKeyCode::Return => {
+                    return MainMenuResult::Selected {
+                        selected: selection,
+                    }
+                }
+                _ => {
+                    return MainMenuResult::NoSelection {
+                        selected: selection,
+                    }
+                }
+            },
+        }
+    }
+
+    MainMenuResult::NoSelection {
+        selected: MainMenuSelection::NewGame,
+    }
 }

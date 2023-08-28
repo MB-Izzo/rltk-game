@@ -1,6 +1,6 @@
 use inventory_system::{ItemCollectionSystem, ItemDropSystem, ItemUseSystem};
 use player::player_input;
-use rltk::{GameState, Point, Rltk, RGB};
+use rltk::{GameState, Point, Rltk};
 use specs::prelude::*;
 
 mod player;
@@ -71,31 +71,35 @@ impl State {
 
 impl GameState for State {
     fn tick(&mut self, ctx: &mut Rltk) {
-        ctx.cls();
-
-        draw_map(&self.ecs, ctx);
-
-        {
-            let positions = self.ecs.read_storage::<Position>();
-            let renderables = self.ecs.read_storage::<Renderable>();
-            let map = self.ecs.fetch::<Map>();
-
-            let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
-            data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
-            for (pos, render) in data.iter() {
-                let idx = map.get_index_at(pos.x, pos.y);
-                if map.visible_tiles[idx] {
-                    ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
-                }
-            }
-
-            gui::draw_ui(&self.ecs, ctx);
-        }
-
         let mut new_run_state;
         {
             let run_state = self.ecs.fetch::<RunState>();
             new_run_state = *run_state;
+        }
+
+        ctx.cls();
+
+        match new_run_state {
+            RunState::MainMenu { .. } => {}
+            _ => {
+                draw_map(&self.ecs, ctx);
+
+                {
+                    let positions = self.ecs.read_storage::<Position>();
+                    let renderables = self.ecs.read_storage::<Renderable>();
+                    let map = self.ecs.fetch::<Map>();
+
+                    let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+                    data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+                    for (pos, render) in data.iter() {
+                        let idx = map.get_index_at(pos.x, pos.y);
+                        if map.visible_tiles[idx] {
+                            ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+                        }
+                    }
+                    gui::draw_ui(&self.ecs, ctx);
+                }
+            }
         }
 
         match new_run_state {
@@ -138,7 +142,10 @@ impl GameState for State {
                             intent
                                 .insert(
                                     *self.ecs.fetch::<Entity>(),
-                                    WantsToUseItem { item: item_entity, target: None },
+                                    WantsToUseItem {
+                                        item: item_entity,
+                                        target: None,
+                                    },
                                 )
                                 .expect("Unabled to insert intent do use item");
                             new_run_state = RunState::PlayerTurn;
@@ -182,6 +189,23 @@ impl GameState for State {
                             .expect("Unable to insert intent to use item");
                         new_run_state = RunState::PlayerTurn;
                     }
+                }
+            }
+            RunState::MainMenu { .. } => {
+                let result = gui::main_menu(self, ctx);
+                match result {
+                    gui::MainMenuResult::NoSelection { selected } => {
+                        new_run_state = RunState::MainMenu {
+                            menu_selection: selected,
+                        }
+                    }
+                    gui::MainMenuResult::Selected { selected } => match selected {
+                        gui::MainMenuSelection::NewGame => new_run_state = RunState::PrePun,
+                        gui::MainMenuSelection::LoadGame => new_run_state = RunState::PrePun,
+                        gui::MainMenuSelection::Quit => {
+                            ::std::process::exit(0);
+                        }
+                    },
                 }
             }
         }
@@ -252,11 +276,14 @@ fn main() -> rltk::BError {
     let player_entity = spawner::player(&mut gs.ecs, player_x, player_y);
 
     gs.ecs.insert(player_entity);
-    gs.ecs.insert(RunState::PrePun);
+    gs.ecs.insert(RunState::MainMenu { menu_selection: gui::MainMenuSelection::NewGame });
     gs.ecs.insert(gamelog::GameLog {
         entries: vec!["Welcome".to_string()],
     });
-    gs.ecs.insert(Aiming{x: player_x, y: player_y});
+    gs.ecs.insert(Aiming {
+        x: player_x,
+        y: player_y,
+    });
 
     rltk::main_loop(context, gs)
 }
@@ -274,5 +301,11 @@ pub enum RunState {
     MonsterTurn,
     ShowInventory,
     ShowDropItem,
-    ShowTargeting { range: i32, item: Entity },
+    ShowTargeting {
+        range: i32,
+        item: Entity,
+    },
+    MainMenu {
+        menu_selection: gui::MainMenuSelection,
+    },
 }
