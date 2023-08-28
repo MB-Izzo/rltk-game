@@ -236,6 +236,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<ProvidesHealing>();
     gs.ecs.register::<Ranged>();
     gs.ecs.register::<InflictsDamage>();
+    gs.ecs.register::<AreaOfEffect>();
 
     let map = Map::new_map_rooms_and_corridors();
 
@@ -254,8 +255,14 @@ fn main() -> rltk::BError {
     gs.ecs.insert(gamelog::GameLog {
         entries: vec!["Welcome".to_string()],
     });
+    gs.ecs.insert(Aiming{x: player_x, y: player_y});
 
     rltk::main_loop(context, gs)
+}
+
+pub struct Aiming {
+    x: i32,
+    y: i32,
 }
 
 #[derive(PartialEq, Copy, Clone)]

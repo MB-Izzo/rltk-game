@@ -11,7 +11,7 @@ pub enum ItemMenuResult {
 use crate::{
     components::{CombatStats, InBackpack, Player, Position, Viewshed},
     gamelog::GameLog,
-    Map, Name, State,
+    Aiming, Map, Name, State,
 };
 
 pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
@@ -364,6 +364,8 @@ pub fn ranged_target(
         return (ItemMenuResult::Cancel, None);
     }
 
+    // draw target
+    /*
     let mouse_pos = ctx.mouse_pos();
     let mut valid_target = false;
     for cell in available_cells.iter() {
@@ -371,10 +373,70 @@ pub fn ranged_target(
             valid_target = true;
         }
     }
+    */
+
+    let mut target_pos = gs.ecs.fetch_mut::<Aiming>();
+
+    match ctx.key {
+        None => {}
+        Some(key) => match key {
+            rltk::VirtualKeyCode::Up | rltk::VirtualKeyCode::K => {
+                target_pos.y = target_pos.y - 1;
+            }
+            rltk::VirtualKeyCode::Down | rltk::VirtualKeyCode::J => {
+                target_pos.y = target_pos.y + 1;
+            }
+            rltk::VirtualKeyCode::Left | rltk::VirtualKeyCode::H => {
+                target_pos.x = target_pos.x - 1;
+            }
+            rltk::VirtualKeyCode::Right | rltk::VirtualKeyCode::L => {
+                target_pos.x = target_pos.x + 1;
+            }
+            _ => {}
+        },
+    }
+
+    let mut valid_target = false;
+    for cell in available_cells.iter() {
+        if cell.x == target_pos.x && cell.y == target_pos.y {
+            valid_target = true;
+        }
+    }
+    if valid_target {
+        ctx.set_bg(target_pos.x, target_pos.y, RGB::named(rltk::CYAN));
+        match ctx.key {
+            None => {}
+            Some(key) => match key {
+                rltk::VirtualKeyCode::Space => {
+                    return (
+                        ItemMenuResult::Selected,
+                        Some(Point::new(target_pos.x, target_pos.y)),
+                    );
+                }
+                _ => {}
+            },
+        }
+    } else {
+        ctx.set_bg(target_pos.x, target_pos.y, RGB::named(rltk::RED));
+        match ctx.key {
+            None => {}
+            Some(key) => match key {
+                rltk::VirtualKeyCode::Space => {
+                    return (ItemMenuResult::Cancel, None);
+                }
+                _ => {}
+            },
+        }
+    }
+
+    /*
     if valid_target {
         ctx.set_bg(mouse_pos.0, mouse_pos.1, RGB::named(rltk::CYAN));
         if ctx.left_click {
-            return (ItemMenuResult::Selected, Some(Point::new(mouse_pos.0, mouse_pos.1)));
+            return (
+                ItemMenuResult::Selected,
+                Some(Point::new(mouse_pos.0, mouse_pos.1)),
+            );
         }
     } else {
         ctx.set_bg(mouse_pos.0, mouse_pos.1, RGB::named(rltk::RED));
@@ -382,6 +444,7 @@ pub fn ranged_target(
             return (ItemMenuResult::Cancel, None);
         }
     }
+    */
 
     (ItemMenuResult::NoResponse, None)
 }

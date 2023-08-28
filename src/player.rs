@@ -2,6 +2,7 @@ use crate::{
     components::{Item, WantsToPickupItem},
     gamelog::GameLog,
     map::{MAPHEIGHT, MAPWIDTH},
+    Aiming,
 };
 
 use super::{CombatStats, Map, Player, Position, RunState, State, Viewshed, WantsToMelee};
@@ -58,6 +59,10 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
             let mut ppos = ecs.write_resource::<Point>();
             ppos.x = pos.x;
             ppos.y = pos.y;
+            // set global aiming pos to playery+1 
+            let mut aiming_pos = ecs.fetch_mut::<Aiming>();
+            aiming_pos.x = pos.x;
+            aiming_pos.y = pos.y - 1;
         }
     }
 }

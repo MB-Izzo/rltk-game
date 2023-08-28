@@ -2,7 +2,7 @@ use specs::prelude::*;
 
 use crate::{
     components::{
-        CombatStats, Consumable, InBackpack, InflictsDamage, Name, Position, Potion,
+        AreaOfEffect, CombatStats, Consumable, InBackpack, InflictsDamage, Name, Position, Potion,
         ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem, WantsToUseItem,
     },
     gamelog::GameLog,
@@ -64,6 +64,7 @@ impl<'a> System<'a> for ItemUseSystem {
         ReadStorage<'a, InflictsDamage>,
         ReadExpect<'a, Map>,
         WriteStorage<'a, SufferDamage>,
+        ReadStorage<'a, AreaOfEffect>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -80,23 +81,60 @@ impl<'a> System<'a> for ItemUseSystem {
             inflicts_damage,
             map,
             mut suffer_damage,
+            aoe,
         ) = data;
 
-        for (entity, want_use_item, stats) in (&entities, &wants_use_item, &mut combat_stats).join()
-        {
+        for (entity, want_use_item) in (&entities, &wants_use_item).join() {
             let mut used_item = true;
+
+            let mut targets: Vec<Entity> = Vec::new();
+            match want_use_item.target {
+                None => {
+                    targets.push(*player_entity);
+                }
+                Some(target) => {
+                    let area_effect = aoe.get(want_use_item.item);
+                    match area_effect {
+                        None => {
+                            // single target in tile
+                            let idx = map.get_index_at(target.x, target.y);
+                            for mob in map.tile_content[idx].iter() {
+                                targets.push(*mob);
+                            }
+                        }
+                        Some(area_effect) => {
+                            let mut blast_tiles =
+                                rltk::field_of_view(target, area_effect.radius, &*map);
+                            blast_tiles.retain(|p| {
+                                p.x > 0 && p.x < map.width - 1 && p.y > 0 && p.y < map.height - 1
+                            });
+                            for tile_idx in blast_tiles.iter() {
+                                let idx = map.get_index_at(tile_idx.x, tile_idx.y);
+                                for mob in map.tile_content[idx].iter() {
+                                    targets.push(*mob);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             let item_heals = provide_healing.get(want_use_item.item);
             match item_heals {
                 None => {}
                 Some(healer) => {
-                    stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount);
-                    if entity == *player_entity {
-                        gamelog.entries.push(format!(
-                            "You drink the {}, healing {} hp",
-                            names.get(want_use_item.item).unwrap().name,
-                            healer.heal_amount
-                        ));
+                    for target in targets.iter() {
+                        let stats = combat_stats.get_mut(*target);
+                        if let Some(stats) = stats {
+                            stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount);
+                            if entity == *player_entity {
+                                gamelog.entries.push(format!(
+                                    "You use {}, healing {} hp",
+                                    names.get(want_use_item.item).unwrap().name,
+                                    healer.heal_amount
+                                ));
+                            }
+                        }
                     }
                 }
             }
@@ -105,10 +143,8 @@ impl<'a> System<'a> for ItemUseSystem {
             match item_damages {
                 None => {}
                 Some(damage) => {
-                    let target_point = want_use_item.target.unwrap();
-                    let idx = map.get_index_at(target_point.x, target_point.y);
                     used_item = false;
-                    for mob in map.tile_content[idx].iter() {
+                    for mob in targets.iter() {
                         SufferDamage::new_damage(&mut suffer_damage, *mob, damage.damage);
                         if entity == *player_entity {
                             let mob_name = names.get(*mob).unwrap();

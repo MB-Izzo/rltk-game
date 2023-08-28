@@ -1,5 +1,5 @@
 use crate::{
-    components::{Consumable, Item, Potion, ProvidesHealing, Ranged, InflictsDamage},
+    components::{Consumable, Item, Potion, ProvidesHealing, Ranged, InflictsDamage, AreaOfEffect},
     map::{Map, MAPWIDTH},
     rect::Rect,
 };
@@ -61,7 +61,7 @@ pub fn spawn_room_content(ecs: &mut World, room: &Rect) {
     {
         let mut rng = ecs.write_resource::<RandomNumberGenerator>();
         let num_monsters = rng.roll_dice(1, MAX_MONSTERS + 2) - 3;
-        let num_items = rng.roll_dice(1, MAX_ITEMS + 2) - 3;
+        let num_items = rng.roll_dice(1, MAX_ITEMS + 10) - 3; // + 2
 
         for _i in 0..num_monsters {
             let mut added = false;
@@ -140,14 +140,35 @@ fn magic_missile_scroll(ecs: &mut World, x: i32, y: i32) {
         .build();
 }
 
+fn fireball_scroll(ecs: &mut World, x: i32, y: i32) {
+    ecs.create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437(')'),
+            fg: RGB::named(rltk::ORANGE),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name {
+            name: "Fireball Scroll".to_string(),
+        })
+        .with(Item {})
+        .with(Consumable {})
+        .with(Ranged { range: 6 } )
+        .with(InflictsDamage { damage: 20 })
+        .with(AreaOfEffect { radius: 3 })
+        .build();
+}
+
 fn random_item(ecs: &mut World, x: i32, y: i32) {
     let roll: i32;
     {
         let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        roll = rng.roll_dice(1, 2);
+        roll = rng.roll_dice(1, 3);
     }
     match roll {
         1 => { health_potion(ecs, x, y) }
+        2 => { fireball_scroll(ecs, x, y) }
         _ => { magic_missile_scroll(ecs, x, y) }
     }
 }
