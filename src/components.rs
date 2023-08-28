@@ -108,3 +108,13 @@ pub struct Consumable {}
 pub struct ProvidesHealing {
     pub heal_amount: i32
 }
+
+#[derive(Component, Debug)]
+pub struct Ranged {
+    pub range: i32
+}
+
+#[derive(Component, Debug)]
+pub struct InflictsDamage {
+    pub damage: i32
+}
