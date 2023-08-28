@@ -3,7 +3,7 @@ use specs::prelude::*;
 use crate::{
     components::{
         AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name,
-        Position, Potion, ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem,
+        Position, ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem,
         WantsToUseItem,
     },
     gamelog::GameLog,
@@ -58,7 +58,6 @@ impl<'a> System<'a> for ItemUseSystem {
         Entities<'a>,
         WriteStorage<'a, WantsToUseItem>,
         ReadStorage<'a, Name>,
-        ReadStorage<'a, Potion>,
         WriteStorage<'a, CombatStats>,
         ReadStorage<'a, Consumable>,
         ReadStorage<'a, ProvidesHealing>,
@@ -76,7 +75,6 @@ impl<'a> System<'a> for ItemUseSystem {
             entities,
             mut wants_use_item,
             names,
-            potions,
             mut combat_stats,
             consumables,
             provide_healing,

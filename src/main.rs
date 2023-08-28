@@ -1,7 +1,9 @@
+extern crate serde;
 use inventory_system::{ItemCollectionSystem, ItemDropSystem, ItemUseSystem};
 use player::player_input;
 use rltk::{GameState, Point, Rltk};
 use specs::prelude::*;
+use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
 
 mod player;
 
@@ -34,6 +36,8 @@ mod gui;
 mod spawner;
 
 mod inventory_system;
+
+mod saveload_system;
 
 pub struct State {
     pub ecs: World,
@@ -201,12 +205,21 @@ impl GameState for State {
                     }
                     gui::MainMenuResult::Selected { selected } => match selected {
                         gui::MainMenuSelection::NewGame => new_run_state = RunState::PrePun,
-                        gui::MainMenuSelection::LoadGame => new_run_state = RunState::PrePun,
+                        gui::MainMenuSelection::LoadGame => {
+                            saveload_system::load_game(&mut self.ecs);
+                            new_run_state = RunState::AwaitingInput;
+                        }
                         gui::MainMenuSelection::Quit => {
                             ::std::process::exit(0);
                         }
                     },
                 }
+            }
+            RunState::SaveGame => {
+                saveload_system::save_game(&mut self.ecs);
+                new_run_state = RunState::MainMenu {
+                    menu_selection: gui::MainMenuSelection::LoadGame,
+                };
             }
         }
 
@@ -251,7 +264,6 @@ fn main() -> rltk::BError {
     gs.ecs.register::<WantsToMelee>();
     gs.ecs.register::<SufferDamage>();
     gs.ecs.register::<Item>();
-    gs.ecs.register::<Potion>();
     gs.ecs.register::<InBackpack>();
     gs.ecs.register::<WantsToPickupItem>();
     gs.ecs.register::<WantsToUseItem>();
@@ -262,6 +274,11 @@ fn main() -> rltk::BError {
     gs.ecs.register::<InflictsDamage>();
     gs.ecs.register::<AreaOfEffect>();
     gs.ecs.register::<Confusion>();
+
+    gs.ecs.register::<SimpleMarker<SerializeMe>>();
+    gs.ecs.register::<SerializationHelper>();
+
+    gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 
     let map = Map::new_map_rooms_and_corridors();
 
@@ -276,7 +293,9 @@ fn main() -> rltk::BError {
     let player_entity = spawner::player(&mut gs.ecs, player_x, player_y);
 
     gs.ecs.insert(player_entity);
-    gs.ecs.insert(RunState::MainMenu { menu_selection: gui::MainMenuSelection::NewGame });
+    gs.ecs.insert(RunState::MainMenu {
+        menu_selection: gui::MainMenuSelection::NewGame,
+    });
     gs.ecs.insert(gamelog::GameLog {
         entries: vec!["Welcome".to_string()],
     });
@@ -308,4 +327,5 @@ pub enum RunState {
     MainMenu {
         menu_selection: gui::MainMenuSelection,
     },
+    SaveGame,
 }
