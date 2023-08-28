@@ -80,7 +80,9 @@ impl GameState for State {
             let renderables = self.ecs.read_storage::<Renderable>();
             let map = self.ecs.fetch::<Map>();
 
-            for (pos, render) in (&positions, &renderables).join() {
+            let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+            data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+            for (pos, render) in data.iter() {
                 let idx = map.get_index_at(pos.x, pos.y);
                 if map.visible_tiles[idx] {
                     ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
@@ -166,6 +168,17 @@ impl GameState for State {
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
+    /*
+    let mut context = RltkBuilder::new()
+        .with_title("Roguelike Tutorial")
+        .with_dimensions(40, 25)
+        .with_tile_dimensions(32, 32)
+        .with_resource_path("resources/")
+        .with_font("dungeonfont.png", 32, 32)
+        .with_simple_console(40, 25, "dungeonfont.png")
+        .build()?;
+    context.with_post_scanlines(true);
+    */
     let mut context = RltkBuilder::simple80x50()
         .with_title("Roguelike Tutorial")
         .build()?;
