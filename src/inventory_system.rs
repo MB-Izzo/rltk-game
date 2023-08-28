@@ -2,8 +2,9 @@ use specs::prelude::*;
 
 use crate::{
     components::{
-        AreaOfEffect, CombatStats, Consumable, InBackpack, InflictsDamage, Name, Position, Potion,
-        ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem, WantsToUseItem,
+        AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name,
+        Position, Potion, ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem,
+        WantsToUseItem,
     },
     gamelog::GameLog,
     map::Map,
@@ -65,6 +66,7 @@ impl<'a> System<'a> for ItemUseSystem {
         ReadExpect<'a, Map>,
         WriteStorage<'a, SufferDamage>,
         ReadStorage<'a, AreaOfEffect>,
+        WriteStorage<'a, Confusion>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -82,6 +84,7 @@ impl<'a> System<'a> for ItemUseSystem {
             map,
             mut suffer_damage,
             aoe,
+            mut confused,
         ) = data;
 
         for (entity, want_use_item) in (&entities, &wants_use_item).join() {
@@ -157,6 +160,31 @@ impl<'a> System<'a> for ItemUseSystem {
                         used_item = true;
                     }
                 }
+            }
+
+            let mut confused_victims = Vec::new();
+            {
+                let causes_confusion = confused.get(want_use_item.item);
+                match causes_confusion {
+                    None => {}
+                    Some(confusion) => {
+                        used_item = false;
+                        for mob in targets.iter() {
+                            confused_victims.push((*mob, confusion.turns));
+                            if entity == *player_entity {
+                                let mob_name = names.get(*mob).unwrap();
+                                let item_name = names.get(want_use_item.item).unwrap();
+                                gamelog.entries.push(format!(
+                                    "You use {} on {}, confusing them",
+                                    item_name.name, mob_name.name
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            for mob in confused_victims.iter() {
+                confused.insert(mob.0, Confusion { turns: mob.1 }).expect("Unable to insert confused status");
             }
 
             if used_item {
