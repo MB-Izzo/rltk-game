@@ -1,14 +1,21 @@
 use std::collections::HashMap;
 
 use crate::{
-    components::{Consumable, Item, ProvidesHealing, Ranged, InflictsDamage, AreaOfEffect, Confusion, SerializeMe},
+    components::{
+        AreaOfEffect, Confusion, Consumable, InflictsDamage, Item, ProvidesHealing, Ranged,
+        SerializeMe,
+    },
     map::MAPWIDTH,
-    rect::Rect, random_table::RandomTable,
+    random_table::RandomTable,
+    rect::Rect,
 };
 
 use super::{BlocksTile, CombatStats, Monster, Name, Player, Position, Renderable, Viewshed};
 use rltk::{RandomNumberGenerator, RGB};
-use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
+use specs::{
+    prelude::*,
+    saveload::{MarkedBuilder, SimpleMarker},
+};
 
 const MAX_MONSTERS: i32 = 4;
 
@@ -79,6 +86,8 @@ pub fn spawn_room_content(ecs: &mut World, room: &Rect, map_depth: i32) {
             "Fireball Scroll" => fireball_scroll(ecs, x, y),
             "Confusion Scroll" => confusion_scroll(ecs, x, y),
             "Magic Missile Scroll" => magic_missile_scroll(ecs, x, y),
+            "Dagger" => dagger(ecs, x, y),
+            "Shield" => shield(ecs, x, y),
             _ => {}
         }
     }
@@ -117,7 +126,7 @@ fn magic_missile_scroll(ecs: &mut World, x: i32, y: i32) {
         })
         .with(Item {})
         .with(Consumable {})
-        .with(Ranged { range: 6 } )
+        .with(Ranged { range: 6 })
         .with(InflictsDamage { damage: 8 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
@@ -137,7 +146,7 @@ fn fireball_scroll(ecs: &mut World, x: i32, y: i32) {
         })
         .with(Item {})
         .with(Consumable {})
-        .with(Ranged { range: 6 } )
+        .with(Ranged { range: 6 })
         .with(InflictsDamage { damage: 20 })
         .with(AreaOfEffect { radius: 3 })
         .marked::<SimpleMarker<SerializeMe>>()
@@ -158,12 +167,11 @@ fn confusion_scroll(ecs: &mut World, x: i32, y: i32) {
         })
         .with(Item {})
         .with(Consumable {})
-        .with(Ranged { range: 6 } )
+        .with(Ranged { range: 6 })
         .with(Confusion { turns: 4 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
-
 
 fn orc(ecs: &mut World, x: i32, y: i32) {
     monster(ecs, x, y, rltk::to_cp437('o'), "Orc");
@@ -209,4 +217,40 @@ fn room_table(map_depth: i32) -> RandomTable {
         .add("Fireball Scroll", 2 + map_depth)
         .add("Confusion Scroll", 2 + map_depth)
         .add("Magic Missile Scroll", 4)
+        .add("Dagger", 3)
+        .add("Shield", 3)
+}
+
+fn dagger(ecs: &mut World, x: i32, y: i32) {
+    ecs.create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437('/'),
+            fg: RGB::named(rltk::CYAN),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name {
+            name: "Dagger".to_string(),
+        })
+        .with(Item {})
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn shield(ecs: &mut World, x: i32, y: i32) {
+    ecs.create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437('('),
+            fg: RGB::named(rltk::CYAN),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name {
+            name: "Shield".to_string(),
+        })
+        .with(Item {})
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
 }
