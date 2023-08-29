@@ -1,5 +1,5 @@
 use crate::{
-    components::{Item, WantsToPickupItem},
+    components::{Item, WantsToPickupItem, Monster},
     gamelog::GameLog,
     map::{TileType, MAPHEIGHT, MAPWIDTH},
     Aiming,
@@ -102,6 +102,7 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             rltk::VirtualKeyCode::D => return RunState::ShowDropItem,
 
             rltk::VirtualKeyCode::Escape => return RunState::SaveGame,
+            rltk::VirtualKeyCode::S => return skip_turn(&mut gs.ecs),
 
             rltk::VirtualKeyCode::Period => {
                 if try_next_level(&mut gs.ecs) {
@@ -167,4 +168,33 @@ pub fn try_next_level(ecs: &mut World) -> bool {
         gamelog.entries.push("There is no stairs here".to_string());
         false
     }
+}
+
+fn skip_turn(ecs: &mut World) -> RunState {
+    let player_entity = ecs.fetch::<Entity>();
+    let viewshed_comps = ecs.read_storage::<Viewshed>();
+    let monsters = ecs.read_storage::<Monster>();
+
+    let world_map_resource = ecs.fetch::<Map>();
+
+    let mut can_heal = true;
+    let viewshed = viewshed_comps.get(*player_entity).unwrap();
+    for tile in viewshed.visible_tiles.iter() {
+        let idx = world_map_resource.get_index_at(tile.x, tile.y);
+        for entitiy_id in world_map_resource.tile_content[idx].iter() {
+            let mob = monsters.get(*entitiy_id);
+            match mob {
+                None => {}
+                Some(_) => { can_heal = false }
+            }
+        }
+    }
+
+    if can_heal {
+        let mut healths = ecs.write_storage::<CombatStats>();
+        let player_hp = healths.get_mut(*player_entity).unwrap();
+        player_hp.hp = i32::min(player_hp.hp + 1, player_hp.max_hp);
+    }
+
+    RunState::PlayerTurn
 }
