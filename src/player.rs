@@ -1,7 +1,7 @@
 use crate::{
     components::{Item, WantsToPickupItem},
     gamelog::GameLog,
-    map::{MAPHEIGHT, MAPWIDTH},
+    map::{TileType, MAPHEIGHT, MAPWIDTH},
     Aiming,
 };
 
@@ -59,7 +59,7 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
             let mut ppos = ecs.write_resource::<Point>();
             ppos.x = pos.x;
             ppos.y = pos.y;
-            // set global aiming pos to playery+1 
+            // set global aiming pos to playery+1
             let mut aiming_pos = ecs.fetch_mut::<Aiming>();
             aiming_pos.x = pos.x;
             aiming_pos.y = pos.y - 1;
@@ -102,6 +102,12 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             rltk::VirtualKeyCode::D => return RunState::ShowDropItem,
 
             rltk::VirtualKeyCode::Escape => return RunState::SaveGame,
+
+            rltk::VirtualKeyCode::Period => {
+                if try_next_level(&mut gs.ecs) {
+                    return RunState::NextLevel;
+                }
+            }
 
             _ => {
                 return RunState::AwaitingInput;
@@ -148,4 +154,17 @@ fn get_item(ecs: &mut World) {
 
 fn player_on_position(player_pos: &Point, other_pos: &Position) -> bool {
     player_pos.x == other_pos.x && player_pos.y == other_pos.y
+}
+
+pub fn try_next_level(ecs: &mut World) -> bool {
+    let player_pos = ecs.fetch::<Point>();
+    let map = ecs.fetch::<Map>();
+    let player_idx = map.get_index_at(player_pos.x, player_pos.y);
+    if map.tiles[player_idx] == TileType::DownStairs {
+        true
+    } else {
+        let mut gamelog = ecs.fetch_mut::<GameLog>();
+        gamelog.entries.push("There is no stairs here".to_string());
+        false
+    }
 }
