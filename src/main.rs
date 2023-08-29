@@ -290,7 +290,7 @@ fn main() -> rltk::BError {
     let map = Map::new_map_rooms_and_corridors(1);
 
     for room in map.rooms.iter().skip(1) {
-        spawner::spawn_room_content(&mut gs.ecs, room)
+        spawner::spawn_room_content(&mut gs.ecs, room, 1)
     }
 
     let (player_x, player_y) = map.rooms[0].center();
@@ -379,15 +379,16 @@ impl State {
 
         // build new map
         let world_map;
+        let curr_depth;
         {
             let mut world_map_resource = self.ecs.write_resource::<Map>();
-            let curr_depth = world_map_resource.depth;
+            curr_depth = world_map_resource.depth;
             *world_map_resource = Map::new_map_rooms_and_corridors(curr_depth + 1);
             world_map = world_map_resource.clone();
         }
 
         for room in world_map.rooms.iter().skip(1) {
-            spawner::spawn_room_content(&mut self.ecs, room);
+            spawner::spawn_room_content(&mut self.ecs, room, curr_depth + 1);
         }
 
         let (new_room_center_x, new_room_center_y) = world_map.rooms[0].center();
