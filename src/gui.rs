@@ -21,8 +21,14 @@ pub enum ItemMenuResult {
     Selected,
 }
 
+#[derive(PartialEq, Copy, Clone)]
+pub enum GameOverResult {
+    NoSelection,
+    QuitToMenu,
+}
+
 use crate::{
-    components::{CombatStats, InBackpack, Player, Position, Viewshed, Equipped},
+    components::{CombatStats, Equipped, InBackpack, Player, Position, Viewshed},
     gamelog::GameLog,
     Aiming, Map, Name, RunState, State,
 };
@@ -75,7 +81,13 @@ pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
     draw_tooltips(&ecs, ctx);
     let map = ecs.fetch::<Map>();
     let depth = format!("Depth: {}", map.depth);
-    ctx.print_color(2, 43, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), &depth);
+    ctx.print_color(
+        2,
+        43,
+        RGB::named(rltk::YELLOW),
+        RGB::named(rltk::BLACK),
+        &depth,
+    );
 }
 
 pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Entity>) {
@@ -672,3 +684,35 @@ pub fn remove_item_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Opti
     }
 }
 
+pub fn game_over(ctx: &mut Rltk) -> GameOverResult {
+    ctx.print_color_centered(
+        15,
+        RGB::named(rltk::YELLOW),
+        RGB::named(rltk::BLACK),
+        "Your journey has ended!",
+    );
+    ctx.print_color_centered(
+        17,
+        RGB::named(rltk::WHITE),
+        RGB::named(rltk::BLACK),
+        "One day, we'll tell you all about how you did.",
+    );
+    ctx.print_color_centered(
+        18,
+        RGB::named(rltk::WHITE),
+        RGB::named(rltk::BLACK),
+        "That day, sadly, is not in this chapter..",
+    );
+
+    ctx.print_color_centered(
+        20,
+        RGB::named(rltk::MAGENTA),
+        RGB::named(rltk::BLACK),
+        "Press any key to return to the menu.",
+    );
+
+    match ctx.key {
+        None => GameOverResult::NoSelection,
+        Some(_) => GameOverResult::QuitToMenu,
+    }
+}

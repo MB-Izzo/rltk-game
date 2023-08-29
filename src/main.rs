@@ -243,6 +243,16 @@ impl GameState for State {
                     }
                 }
             }
+            RunState::GameOver => {
+                let result = gui::game_over(ctx);
+                match result {
+                    gui::GameOverResult::NoSelection => {}
+                    gui::GameOverResult::QuitToMenu => {
+                        self.game_over_cleanup();
+                        new_run_state = RunState::MainMenu { menu_selection: gui::MainMenuSelection::NewGame };
+                    }
+                }
+            }
         }
 
         {
@@ -358,6 +368,7 @@ pub enum RunState {
     SaveGame,
     NextLevel,
     ShowRemoveItem,
+    GameOver,
 }
 
 impl State {
@@ -440,5 +451,54 @@ impl State {
 
         let mut gamelog = self.ecs.fetch_mut::<gamelog::GameLog>();
         gamelog.entries.push("You descend to the next level".to_string());
+    }
+
+    fn game_over_cleanup(&mut self) {
+        let mut to_delete = Vec::new();
+        for e in self.ecs.entities().join() {
+            to_delete.push(e);
+        }
+
+        for del in to_delete.iter() {
+            self.ecs.delete_entity(*del).expect("Deletion failed");
+        }
+
+        // refacto with go to new depth / loading game
+        // difference is with spawn a new player here
+        // see comment below
+        let world_map;
+        {
+            let mut world_map_resource = self.ecs.write_resource::<Map>();
+            *world_map_resource = Map::new_map_rooms_and_corridors(1);
+            world_map = world_map_resource.clone();
+        }
+
+        for room in world_map.rooms.iter().skip(1) {
+            spawner::spawn_room_content(&mut self.ecs, room, 1);
+        }
+
+        let (new_room_center_x, new_room_center_y) = world_map.rooms[0].center();
+        // this line is different
+        let player_entity = spawner::player(&mut self.ecs, new_room_center_x, new_room_center_y);
+        let mut player_position = self.ecs.write_resource::<Point>(); 
+        *player_position = Point::new(new_room_center_x, new_room_center_y);
+        let mut position_components = self.ecs.write_storage::<Position>();
+        
+        // these 2 lines are different
+        let mut player_entity_writer = self.ecs.write_resource::<Entity>();
+        *player_entity_writer = player_entity;
+
+        let player_pos_comp = position_components.get_mut(player_entity);
+        if let Some(player_pos_comp) = player_pos_comp {
+            player_pos_comp.x = new_room_center_x;
+            player_pos_comp.y = new_room_center_y;
+        }
+
+        let mut viewsheds = self.ecs.write_storage::<Viewshed>();
+        let vs = viewsheds.get_mut(player_entity);
+        if let Some(vs) = vs {
+            vs.dirty = true;
+        }
+
     }
 }
