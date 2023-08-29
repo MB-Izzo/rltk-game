@@ -130,6 +130,35 @@ pub struct Confusion {
     pub turns: i32
 }
 
+#[derive(PartialEq, Serialize, Deserialize, Clone, Copy)]
+pub enum EquipmentSlot { Melee, Shield }
+
+#[derive(Component, Serialize, Deserialize, Clone)]
+pub struct Equippable {
+    pub slot: EquipmentSlot
+}
+
+#[derive(Component, Clone, ConvertSaveload)]
+pub struct Equipped {
+    pub owner: Entity,
+    pub slot: EquipmentSlot,
+}
+
+#[derive(Component, Clone, ConvertSaveload)]
+pub struct MeleePowerBonus {
+    pub power: i32
+}
+
+#[derive(Component, Clone, ConvertSaveload)]
+pub struct DefenseBonus {
+    pub defense: i32
+}
+
+#[derive(Debug, Component, Clone, ConvertSaveload)]
+pub struct WantsToRemoveItem {
+    pub item: Entity,
+}
+
 // Special component that exists to help serialize the game data
 #[derive(Component, Serialize, Deserialize, Clone)]
 pub struct SerializationHelper {

@@ -100,6 +100,7 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             rltk::VirtualKeyCode::I => return RunState::ShowInventory,
 
             rltk::VirtualKeyCode::D => return RunState::ShowDropItem,
+            rltk::VirtualKeyCode::R => return RunState::ShowRemoveItem,
 
             rltk::VirtualKeyCode::Escape => return RunState::SaveGame,
             rltk::VirtualKeyCode::S => return skip_turn(&mut gs.ecs),

@@ -1,5 +1,5 @@
 extern crate serde;
-use inventory_system::{ItemCollectionSystem, ItemDropSystem, ItemUseSystem};
+use inventory_system::{ItemCollectionSystem, ItemDropSystem, ItemUseSystem, ItemRemoveSystem};
 use player::player_input;
 use rltk::{GameState, Point, Rltk};
 use specs::prelude::*;
@@ -70,6 +70,9 @@ impl State {
 
         let mut drop_items = ItemDropSystem {};
         drop_items.run_now(&self.ecs);
+
+        let mut item_remove = ItemRemoveSystem{};
+        item_remove.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -227,6 +230,19 @@ impl GameState for State {
                self.goto_next_level(); 
                new_run_state = RunState::PrePun;
             }
+            RunState::ShowRemoveItem => {
+                let result = gui::remove_item_menu(self, ctx);
+                match result.0 {
+                    gui::ItemMenuResult::Cancel => new_run_state = RunState::AwaitingInput,
+                    gui::ItemMenuResult::NoResponse => {}
+                    gui::ItemMenuResult::Selected => {
+                        let item_entity = result.1.unwrap();
+                        let mut intent = self.ecs.write_storage::<WantsToRemoveItem>();
+                        intent.insert(*self.ecs.fetch::<Entity>(), WantsToRemoveItem{ item: item_entity }).expect("Unable to insert intent to remove weapon");
+                        new_run_state = RunState::PlayerTurn;
+                    }
+                }
+            }
         }
 
         {
@@ -281,6 +297,11 @@ fn main() -> rltk::BError {
     gs.ecs.register::<InflictsDamage>();
     gs.ecs.register::<AreaOfEffect>();
     gs.ecs.register::<Confusion>();
+    gs.ecs.register::<Equippable>();
+    gs.ecs.register::<Equipped>();
+    gs.ecs.register::<MeleePowerBonus>();
+    gs.ecs.register::<DefenseBonus>();
+    gs.ecs.register::<WantsToRemoveItem>();
 
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();
@@ -336,6 +357,7 @@ pub enum RunState {
     },
     SaveGame,
     NextLevel,
+    ShowRemoveItem,
 }
 
 impl State {
@@ -344,6 +366,7 @@ impl State {
         let player = self.ecs.read_storage::<Player>();
         let backpack = self.ecs.read_storage::<InBackpack>();
         let player_entity = self.ecs.fetch::<Entity>();
+        let equipped = self.ecs.read_storage::<Equipped>();
 
         let mut to_delete: Vec<Entity> = Vec::new();
         
@@ -361,11 +384,17 @@ impl State {
                 }
             }
 
+            let eq = equipped.get(entity);
+            if let Some(eq) = eq {
+                if eq.owner == *player_entity {
+                    should_delete = false;
+                }
+            }
+
             if should_delete {
                 to_delete.push(entity);
             }
         }
-
 
         to_delete
 

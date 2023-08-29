@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     components::{
         AreaOfEffect, Confusion, Consumable, InflictsDamage, Item, ProvidesHealing, Ranged,
-        SerializeMe,
+        SerializeMe, Equippable, EquipmentSlot, MeleePowerBonus, DefenseBonus,
     },
     map::MAPWIDTH,
     random_table::RandomTable,
@@ -234,6 +234,8 @@ fn dagger(ecs: &mut World, x: i32, y: i32) {
             name: "Dagger".to_string(),
         })
         .with(Item {})
+        .with(Equippable { slot: EquipmentSlot::Melee })
+        .with(MeleePowerBonus { power: 2 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
@@ -251,6 +253,8 @@ fn shield(ecs: &mut World, x: i32, y: i32) {
             name: "Shield".to_string(),
         })
         .with(Item {})
+        .with(Equippable { slot: EquipmentSlot::Shield })
+        .with(DefenseBonus { defense: 1 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
