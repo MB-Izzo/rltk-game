@@ -39,6 +39,8 @@ mod inventory_system;
 
 mod saveload_system;
 
+mod random_table;
+
 pub struct State {
     pub ecs: World,
 }
