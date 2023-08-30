@@ -1,8 +1,8 @@
-use std::cmp::{max, min};
 use super::rect::Rect;
 use rltk::{Algorithm2D, BaseMap, Point, RandomNumberGenerator, Rltk, RGB};
-use specs::{World, Entity};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use specs::{Entity, World};
+use std::cmp::{max, min};
 
 pub const MAPWIDTH: usize = 80;
 pub const MAPHEIGHT: usize = 43;
@@ -163,7 +163,7 @@ impl Map {
         }
 
         // Set stair position to center of last room.
-        let stairs_position = map.rooms[map.rooms.len() -1].center();
+        let stairs_position = map.rooms[map.rooms.len() - 1].center();
         let stairs_idx = map.get_index_at(stairs_position.0, stairs_position.1);
         map.tiles[stairs_idx] = TileType::DownStairs;
 
@@ -224,7 +224,7 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
                     fg = RGB::from_f32(0.5, 0.5, 1.0);
                 }
                 TileType::Wall => {
-                    glyph = rltk::to_cp437('#');
+                    glyph = wall_glyph(&*map, x, y);
                     fg = RGB::from_f32(0.0, 1.0, 0.0);
                 }
                 TileType::DownStairs => {
@@ -239,9 +239,60 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
         }
         // move coords
         x += 1;
-        if x > MAPWIDTH - 1 {
+        if x > MAPWIDTH as i32 - 1 {
             x = 0;
             y += 1;
         }
     }
+}
+
+fn wall_glyph(map: &Map, x: i32, y: i32) -> rltk::FontCharType {
+    if x < 1 || x > map.width - 2 || x < 1 || y > map.height - 2 as i32 {
+        return 35;
+    }
+    // act as bitmask
+    let mut mask: u8 = 0;
+
+    // check north
+    if is_revealed_and_wall(map, x, y - 1) {
+        mask += 1;
+    }
+    // check south
+    if is_revealed_and_wall(map, x, y + 1) {
+        mask += 2;
+    }
+    // check west
+    if is_revealed_and_wall(map, x - 1, y) {
+        mask += 4;
+    }
+    // check east
+    if is_revealed_and_wall(map, x + 1, y) {
+        mask += 8;
+    }
+
+    // show good wall according to bitmask.
+    match mask {
+        0 => 9,    // pillar
+        1 => 186,  // n
+        2 => 186,  // s
+        3 => 186,  // n/s
+        4 => 205,  // w
+        5 => 188,  // n/w
+        6 => 187,  // s/w
+        7 => 185,  // n/s/w
+        8 => 205,  // e
+        9 => 200,  // n/e
+        10 => 201, // s/e
+        11 => 204, // n/s/e
+        12 => 205, // e/w
+        13 => 202, // e/w/s
+        14 => 203, // e/w/n
+        15 => 206, // n/s/e/w
+        _ => 35,
+    }
+}
+
+fn is_revealed_and_wall(map: &Map, x: i32, y: i32) -> bool {
+    let idx = map.get_index_at(x, y);
+    map.tiles[idx] == TileType::Wall && map.revealed_tiles[idx]
 }
