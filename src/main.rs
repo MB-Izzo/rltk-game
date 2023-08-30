@@ -41,6 +41,8 @@ mod saveload_system;
 
 mod random_table;
 
+mod particle_system;
+
 pub struct State {
     pub ecs: World,
 }
@@ -74,6 +76,9 @@ impl State {
         let mut item_remove = ItemRemoveSystem{};
         item_remove.run_now(&self.ecs);
 
+        let mut particles = particle_system::ParticleSpawnSystem{};
+        particles.run_now(&self.ecs);
+
         self.ecs.maintain();
     }
 }
@@ -87,6 +92,7 @@ impl GameState for State {
         }
 
         ctx.cls();
+        particle_system::cull_dead_particles(&mut self.ecs, ctx);
 
         match new_run_state {
             RunState::MainMenu { .. } => {}
@@ -285,6 +291,8 @@ fn main() -> rltk::BError {
     let mut gs = State { ecs: World::new() };
 
     gs.ecs.insert(rltk::RandomNumberGenerator::new());
+    gs.ecs.insert(particle_system::ParticleBuilder::new());
+
     // Register components to ECS
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
@@ -312,6 +320,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<MeleePowerBonus>();
     gs.ecs.register::<DefenseBonus>();
     gs.ecs.register::<WantsToRemoveItem>();
+    gs.ecs.register::<ParticleLifetime>();
 
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();

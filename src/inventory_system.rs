@@ -8,6 +8,7 @@ use crate::{
     },
     gamelog::GameLog,
     map::Map,
+    particle_system::ParticleBuilder,
 };
 
 pub struct ItemCollectionSystem {}
@@ -69,6 +70,8 @@ impl<'a> System<'a> for ItemUseSystem {
         WriteStorage<'a, Equipped>,
         ReadStorage<'a, Equippable>,
         WriteStorage<'a, InBackpack>,
+        WriteExpect<'a, ParticleBuilder>,
+        ReadStorage<'a, Position>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -89,6 +92,8 @@ impl<'a> System<'a> for ItemUseSystem {
             mut equipped,
             equippable,
             mut backpack,
+            mut particle_builder,
+            positions,
         ) = data;
 
         for (entity, want_use_item) in (&entities, &wants_use_item).join() {
@@ -120,6 +125,14 @@ impl<'a> System<'a> for ItemUseSystem {
                                 for mob in map.tile_content[idx].iter() {
                                     targets.push(*mob);
                                 }
+                                particle_builder.request(
+                                    tile_idx.x,
+                                    tile_idx.y,
+                                    rltk::RGB::named(rltk::ORANGE),
+                                    rltk::RGB::named(rltk::BLACK),
+                                    rltk::to_cp437('░'),
+                                    200.0,
+                                );
                             }
                         }
                     }
@@ -179,6 +192,7 @@ impl<'a> System<'a> for ItemUseSystem {
             match item_heals {
                 None => {}
                 Some(healer) => {
+                    used_item = false;
                     for target in targets.iter() {
                         let stats = combat_stats.get_mut(*target);
                         if let Some(stats) = stats {
@@ -189,6 +203,19 @@ impl<'a> System<'a> for ItemUseSystem {
                                     names.get(want_use_item.item).unwrap().name,
                                     healer.heal_amount
                                 ));
+                            }
+                            used_item = true;
+
+                            let pos = positions.get(*target);
+                            if let Some(pos) = pos {
+                                particle_builder.request(
+                                    pos.x,
+                                    pos.y,
+                                    rltk::RGB::named(rltk::GREEN),
+                                    rltk::RGB::named(rltk::BLACK),
+                                    rltk::to_cp437('♥'),
+                                    200.0,
+                                );
                             }
                         }
                     }
@@ -209,9 +236,22 @@ impl<'a> System<'a> for ItemUseSystem {
                                 "You use {} on {}, inflincting {} hp.",
                                 item_name.name, mob_name.name, damage.damage
                             ));
+
+                            let pos = positions.get(*mob);
+
+                            if let Some(pos) = pos {
+                                particle_builder.request(
+                                    pos.x,
+                                    pos.y,
+                                    rltk::RGB::named(rltk::RED),
+                                    rltk::RGB::named(rltk::BLACK),
+                                    rltk::to_cp437('‼'),
+                                    200.0,
+                                );
+                            }
                         }
-                        used_item = true;
                     }
+                    used_item = true;
                 }
             }
 
@@ -231,6 +271,18 @@ impl<'a> System<'a> for ItemUseSystem {
                                     "You use {} on {}, confusing them",
                                     item_name.name, mob_name.name
                                 ));
+                                let pos = positions.get(*mob);
+
+                                if let Some(pos) = pos {
+                                    particle_builder.request(
+                                        pos.x,
+                                        pos.y,
+                                        rltk::RGB::named(rltk::PURPLE),
+                                        rltk::RGB::named(rltk::BLACK),
+                                        rltk::to_cp437('?'),
+                                        200.0,
+                                    );
+                                }
                             }
                         }
                         used_item = true;
@@ -324,12 +376,14 @@ impl<'a> System<'a> for ItemRemoveSystem {
         WriteStorage<'a, InBackpack>,
     );
 
-    fn run (&mut self, data: Self::SystemData) {
+    fn run(&mut self, data: Self::SystemData) {
         let (entities, mut wants_remove, mut equipped, mut backpack) = data;
 
         for (entity, to_remove) in (&entities, &wants_remove).join() {
             equipped.remove(to_remove.item);
-            backpack.insert(to_remove.item, InBackpack { owner: entity }).expect("Unable to insert removed item in backpack");
+            backpack
+                .insert(to_remove.item, InBackpack { owner: entity })
+                .expect("Unable to insert removed item in backpack");
         }
 
         wants_remove.clear();

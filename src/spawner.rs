@@ -150,7 +150,7 @@ fn fireball_scroll(ecs: &mut World, x: i32, y: i32) {
         .with(Consumable {})
         .with(Ranged { range: 6 })
         .with(InflictsDamage { damage: 20 })
-        .with(AreaOfEffect { radius: 3 })
+        .with(AreaOfEffect { radius: 2 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
