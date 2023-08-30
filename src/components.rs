@@ -164,7 +164,17 @@ pub struct ParticleLifetime {
     pub lifetime_ms: f32
 }
 
+#[derive(Component, Serialize, Deserialize, Clone)]
+pub struct InflictsTeleportsSymetrically {}
+
+#[derive(Component, ConvertSaveload, Clone)]
+pub struct TeleportsSymetrically {
+    pub from: Entity,
+}
+
+// =============================================================
 // Special component that exists to help serialize the game data
+// =============================================================
 #[derive(Component, Serialize, Deserialize, Clone)]
 pub struct SerializationHelper {
     pub map : super::map::Map

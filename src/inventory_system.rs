@@ -3,8 +3,9 @@ use specs::prelude::*;
 use crate::{
     components::{
         AreaOfEffect, CombatStats, Confusion, Consumable, Equippable, Equipped, InBackpack,
-        InflictsDamage, Name, Position, ProvidesHealing, SufferDamage, WantsToDropItem,
-        WantsToPickupItem, WantsToRemoveItem, WantsToUseItem,
+        InflictsDamage, InflictsTeleportsSymetrically, Name, Position, ProvidesHealing,
+        SufferDamage, TeleportsSymetrically, WantsToDropItem, WantsToPickupItem, WantsToRemoveItem,
+        WantsToUseItem,
     },
     gamelog::GameLog,
     map::Map,
@@ -72,6 +73,8 @@ impl<'a> System<'a> for ItemUseSystem {
         WriteStorage<'a, InBackpack>,
         WriteExpect<'a, ParticleBuilder>,
         ReadStorage<'a, Position>,
+        ReadStorage<'a, InflictsTeleportsSymetrically>,
+        WriteStorage<'a, TeleportsSymetrically>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -94,6 +97,8 @@ impl<'a> System<'a> for ItemUseSystem {
             mut backpack,
             mut particle_builder,
             positions,
+            inflicts_tp,
+            mut receive_tp,
         ) = data;
 
         for (entity, want_use_item) in (&entities, &wants_use_item).join() {
@@ -249,6 +254,28 @@ impl<'a> System<'a> for ItemUseSystem {
                                     200.0,
                                 );
                             }
+                        }
+                    }
+                    used_item = true;
+                }
+            }
+
+            let item_teleports_victim = inflicts_tp.get(want_use_item.item);
+            match item_teleports_victim {
+                None => {}
+                Some(tp) => {
+                    used_item = false;
+                    for mob in targets.iter() {
+                        receive_tp
+                            .insert(*mob, TeleportsSymetrically { from: entity })
+                            .expect("failed to insert tp");
+                        if entity == *player_entity {
+                            let mob_name = names.get(*mob).unwrap();
+                            let item_name = names.get(want_use_item.item).unwrap();
+                            gamelog.entries.push(format!(
+                                "You use {} on {}, Teleporting them",
+                                item_name.name, mob_name.name
+                            ));
                         }
                     }
                     used_item = true;

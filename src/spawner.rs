@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     components::{
         AreaOfEffect, Confusion, Consumable, InflictsDamage, Item, ProvidesHealing, Ranged,
-        SerializeMe, Equippable, EquipmentSlot, MeleePowerBonus, DefenseBonus,
+        SerializeMe, Equippable, EquipmentSlot, MeleePowerBonus, DefenseBonus, TeleportsSymetrically, InflictsTeleportsSymetrically,
     },
     map::MAPWIDTH,
     random_table::RandomTable,
@@ -90,6 +90,7 @@ pub fn spawn_room_content(ecs: &mut World, room: &Rect, map_depth: i32) {
             "Shield" => shield(ecs, x, y),
             "Longsword" => longsword(ecs, x, y),
             "Tower Shield" => tower_shield(ecs, x, y),
+            "Offensive Teleport scroll" => offensive_teleport_scroll(ecs, x, y),
             _ => {}
         }
     }
@@ -175,6 +176,26 @@ fn confusion_scroll(ecs: &mut World, x: i32, y: i32) {
         .build();
 }
 
+fn offensive_teleport_scroll(ecs: &mut World, x: i32, y: i32) {
+    ecs.create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437('t'),
+            fg: RGB::named(rltk::YELLOWGREEN),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name {
+            name: "Offensive Teleport scroll".to_string(),
+        })
+        .with(Item {})
+        .with(Consumable {})
+        .with(Ranged { range: 6 })
+        .with(InflictsTeleportsSymetrically{})
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
 fn orc(ecs: &mut World, x: i32, y: i32) {
     monster(ecs, x, y, rltk::to_cp437('o'), "Orc");
 }
@@ -223,6 +244,7 @@ fn room_table(map_depth: i32) -> RandomTable {
         .add("Shield", 3)
         .add("Longsword", map_depth - 1)
         .add("Tower Shield", map_depth - 1)
+        .add("Offensive Teleport scroll", 25)
 }
 
 fn dagger(ecs: &mut World, x: i32, y: i32) {

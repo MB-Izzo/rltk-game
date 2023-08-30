@@ -64,6 +64,9 @@ impl State {
         let mut damage_system = DamageSystem {};
         damage_system.run_now(&self.ecs);
 
+        let mut tps = TeleportedSymSystem{};
+        tps.run_now(&self.ecs);
+
         let mut pickup = ItemCollectionSystem {};
         pickup.run_now(&self.ecs);
 
@@ -78,6 +81,7 @@ impl State {
 
         let mut particles = particle_system::ParticleSpawnSystem{};
         particles.run_now(&self.ecs);
+
 
         self.ecs.maintain();
     }
@@ -321,6 +325,8 @@ fn main() -> rltk::BError {
     gs.ecs.register::<DefenseBonus>();
     gs.ecs.register::<WantsToRemoveItem>();
     gs.ecs.register::<ParticleLifetime>();
+    gs.ecs.register::<TeleportsSymetrically>();
+    gs.ecs.register::<InflictsTeleportsSymetrically>();
 
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();
