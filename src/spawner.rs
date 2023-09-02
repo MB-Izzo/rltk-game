@@ -238,13 +238,13 @@ fn room_table(map_depth: i32) -> RandomTable {
         .add("Orc", 1 + map_depth)
         .add("Health Potion", 7)
         .add("Fireball Scroll", 2 + map_depth)
-        .add("Confusion Scroll", 2 + map_depth)
+        .add("Confusion Scroll", 12 + map_depth)
         .add("Magic Missile Scroll", 4)
         .add("Dagger", 3)
         .add("Shield", 3)
         .add("Longsword", map_depth - 1)
         .add("Tower Shield", map_depth - 1)
-        .add("Offensive Teleport scroll", 25)
+        .add("Offensive Teleport scroll", 1)
 }
 
 fn dagger(ecs: &mut World, x: i32, y: i32) {

@@ -100,7 +100,7 @@ impl Map {
         let y = idx as i32 / self.width;
         (x, y)
     }
-
+ 
     pub fn populate_blocked(&mut self) {
         for (i, tile) in self.tiles.iter_mut().enumerate() {
             self.blocked[i] = *tile == TileType::Wall;
@@ -254,7 +254,7 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
 }
 
 fn wall_glyph(map: &Map, x: i32, y: i32) -> rltk::FontCharType {
-    if x < 1 || x > map.width - 2 || x < 1 || y > map.height - 2 as i32 {
+    if x < 1 || x > map.width - 2 || y < 1 || y > map.height - 2 as i32 {
         return 35;
     }
     // act as bitmask

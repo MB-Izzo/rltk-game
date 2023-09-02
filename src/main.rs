@@ -1,5 +1,7 @@
 extern crate serde;
-use inventory_system::{ItemCollectionSystem, ItemDropSystem, ItemUseSystem, ItemRemoveSystem};
+use std::env;
+
+use inventory_system::{ItemCollectionSystem, ItemDropSystem, ItemRemoveSystem, ItemUseSystem};
 use player::player_input;
 use rltk::{GameState, Point, Rltk};
 use specs::prelude::*;
@@ -64,7 +66,7 @@ impl State {
         let mut damage_system = DamageSystem {};
         damage_system.run_now(&self.ecs);
 
-        let mut tps = TeleportedSymSystem{};
+        let mut tps = TeleportedSymSystem {};
         tps.run_now(&self.ecs);
 
         let mut pickup = ItemCollectionSystem {};
@@ -76,12 +78,11 @@ impl State {
         let mut drop_items = ItemDropSystem {};
         drop_items.run_now(&self.ecs);
 
-        let mut item_remove = ItemRemoveSystem{};
+        let mut item_remove = ItemRemoveSystem {};
         item_remove.run_now(&self.ecs);
 
-        let mut particles = particle_system::ParticleSpawnSystem{};
+        let mut particles = particle_system::ParticleSpawnSystem {};
         particles.run_now(&self.ecs);
-
 
         self.ecs.maintain();
     }
@@ -103,21 +104,19 @@ impl GameState for State {
             _ => {
                 draw_map(&self.ecs, ctx);
 
-                {
-                    let positions = self.ecs.read_storage::<Position>();
-                    let renderables = self.ecs.read_storage::<Renderable>();
-                    let map = self.ecs.fetch::<Map>();
+                let positions = self.ecs.read_storage::<Position>();
+                let renderables = self.ecs.read_storage::<Renderable>();
+                let map = self.ecs.fetch::<Map>();
 
-                    let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
-                    data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
-                    for (pos, render) in data.iter() {
-                        let idx = map.get_index_at(pos.x, pos.y);
-                        if map.visible_tiles[idx] {
-                            ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
-                        }
+                let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+                data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+                for (pos, render) in data.iter() {
+                    let idx = map.get_index_at(pos.x, pos.y);
+                    if map.visible_tiles[idx] {
+                        ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
                     }
-                    gui::draw_ui(&self.ecs, ctx);
                 }
+                gui::draw_ui(&self.ecs, ctx);
             }
         }
 
@@ -237,8 +236,8 @@ impl GameState for State {
                 };
             }
             RunState::NextLevel => {
-               self.goto_next_level(); 
-               new_run_state = RunState::PrePun;
+                self.goto_next_level();
+                new_run_state = RunState::PrePun;
             }
             RunState::ShowRemoveItem => {
                 let result = gui::remove_item_menu(self, ctx);
@@ -248,7 +247,12 @@ impl GameState for State {
                     gui::ItemMenuResult::Selected => {
                         let item_entity = result.1.unwrap();
                         let mut intent = self.ecs.write_storage::<WantsToRemoveItem>();
-                        intent.insert(*self.ecs.fetch::<Entity>(), WantsToRemoveItem{ item: item_entity }).expect("Unable to insert intent to remove weapon");
+                        intent
+                            .insert(
+                                *self.ecs.fetch::<Entity>(),
+                                WantsToRemoveItem { item: item_entity },
+                            )
+                            .expect("Unable to insert intent to remove weapon");
                         new_run_state = RunState::PlayerTurn;
                     }
                 }
@@ -259,7 +263,9 @@ impl GameState for State {
                     gui::GameOverResult::NoSelection => {}
                     gui::GameOverResult::QuitToMenu => {
                         self.game_over_cleanup();
-                        new_run_state = RunState::MainMenu { menu_selection: gui::MainMenuSelection::NewGame };
+                        new_run_state = RunState::MainMenu {
+                            menu_selection: gui::MainMenuSelection::NewGame,
+                        };
                     }
                 }
             }
@@ -273,8 +279,8 @@ impl GameState for State {
     }
 }
 
-
 fn main() -> rltk::BError {
+    env::set_var("RUST_BACKTRACE", "FULL");
     use rltk::RltkBuilder;
     /*
     let mut context = RltkBuilder::new()
@@ -395,7 +401,7 @@ impl State {
         let equipped = self.ecs.read_storage::<Equipped>();
 
         let mut to_delete: Vec<Entity> = Vec::new();
-        
+
         for entity in entities.join() {
             let mut should_delete = true;
             let p = player.get(entity);
@@ -423,13 +429,14 @@ impl State {
         }
 
         to_delete
-
     }
 
     fn goto_next_level(&mut self) {
         let to_delete = self.entities_to_remove_on_depth_change();
         for target in to_delete {
-            self.ecs.delete_entity(target).expect("Unable to delete entity");
+            self.ecs
+                .delete_entity(target)
+                .expect("Unable to delete entity");
         }
 
         // build new map
@@ -465,7 +472,9 @@ impl State {
         }
 
         let mut gamelog = self.ecs.fetch_mut::<gamelog::GameLog>();
-        gamelog.entries.push("You descend to the next level".to_string());
+        gamelog
+            .entries
+            .push("You descend to the next level".to_string());
     }
 
     fn game_over_cleanup(&mut self) {
@@ -495,10 +504,10 @@ impl State {
         let (new_room_center_x, new_room_center_y) = world_map.rooms[0].center();
         // this line is different
         let player_entity = spawner::player(&mut self.ecs, new_room_center_x, new_room_center_y);
-        let mut player_position = self.ecs.write_resource::<Point>(); 
+        let mut player_position = self.ecs.write_resource::<Point>();
         *player_position = Point::new(new_room_center_x, new_room_center_y);
         let mut position_components = self.ecs.write_storage::<Position>();
-        
+
         // these 2 lines are different
         let mut player_entity_writer = self.ecs.write_resource::<Entity>();
         *player_entity_writer = player_entity;
@@ -514,6 +523,5 @@ impl State {
         if let Some(vs) = vs {
             vs.dirty = true;
         }
-
     }
 }
